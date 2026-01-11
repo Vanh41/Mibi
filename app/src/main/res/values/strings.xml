@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Fore°Cast</string>
+    <string name="app_name">CURRENT WEATHER</string>
     <string name="icon_content">icon_contentDescription</string>
     <string name="day">Today</string>
     <string name="tempValue">%s°C</string>

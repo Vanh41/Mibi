@@ -2,5 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="skyBlue">#99ccff</color>
+    <color name="themeColor">#00695c</color>
+    <color name="overlayBackground">#D9FFFFFF</color>
+    <color name="textSecondary">#EEEEEE</color>
 </resources>

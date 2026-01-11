@@ -99,7 +99,7 @@ class MainActivity : AppCompatActivity() {
     private fun changeBackgroundOnCondition(conditions:String) {
         when(conditions){
             "Clear Sky","Sunny","Clear"->{
-                binding.root.setBackgroundColor(Color.parseColor("#99ccff"))
+//                binding.root.setBackgroundColor(Color.parseColor("#99ccff"))
                 binding.lottieAnimationView.setAnimation(R.raw.sun)
                 binding.linearLayout.setBackgroundResource(R.drawable.backgroundshape2)
                 binding.linearLayout2.setBackgroundResource(R.drawable.backgroundshape2)
@@ -109,7 +109,7 @@ class MainActivity : AppCompatActivity() {
                 binding.linearLayout6.setBackgroundResource(R.drawable.backgroundshape2)
             }
             "Partly Clouds","Clouds","Overcast","Mist","Foggy","Haze"->{
-                binding.root.setBackgroundColor(Color.parseColor("#cccccc"))
+//                binding.root.setBackgroundColor(Color.parseColor("#cccccc"))
                 binding.lottieAnimationView.setAnimation(R.raw.cloud)
                 binding.linearLayout.setBackgroundResource(R.drawable.backgroundshape3)
                 binding.linearLayout2.setBackgroundResource(R.drawable.backgroundshape3)
@@ -119,7 +119,7 @@ class MainActivity : AppCompatActivity() {
                 binding.linearLayout6.setBackgroundResource(R.drawable.backgroundshape3)
             }
             "Light Rain","Drizzle","Moderate Rain","Showers","Heavy Rain"->{
-                binding.root.setBackgroundColor(Color.parseColor("#66b3ff"))
+//                binding.root.setBackgroundColor(Color.parseColor("#66b3ff"))
                 binding.lottieAnimationView.setAnimation(R.raw.rain)
                 binding.linearLayout.setBackgroundResource(R.drawable.backgroundshape4)
                 binding.linearLayout2.setBackgroundResource(R.drawable.backgroundshape4)
@@ -129,7 +129,7 @@ class MainActivity : AppCompatActivity() {
                 binding.linearLayout6.setBackgroundResource(R.drawable.backgroundshape4)
             }
             "Light Snow","Moderate Snow","Blizzard","Heavy Snow"->{
-                binding.root.setBackgroundColor(Color.parseColor("#000080"))
+//                binding.root.setBackgroundColor(Color.parseColor("#000080"))
                 binding.lottieAnimationView.setAnimation(R.raw.snow)
                 binding.linearLayout.setBackgroundResource(R.drawable.backgroundshape5)
                 binding.linearLayout2.setBackgroundResource(R.drawable.backgroundshape5)
