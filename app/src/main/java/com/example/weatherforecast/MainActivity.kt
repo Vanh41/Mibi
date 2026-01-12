@@ -1,52 +1,123 @@
 package com.example.weatherforecast
 
-import android.graphics.Color
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.SearchView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.weatherforecast.databinding.ActivityMainBinding
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.lifecycle.lifecycleScope // Import mới
-import kotlinx.coroutines.Dispatchers // Import mới
-import kotlinx.coroutines.launch // Import mới
-import kotlinx.coroutines.withContext // Import mới
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import android.widget.ImageView // Nếu bạn dùng icon để mở lịch sử
-
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var database: WeatherDatabase
     private val binding: ActivityMainBinding by lazy {
         ActivityMainBinding.inflate(layoutInflater)
     }
+
+    // Khai báo ViewModel và Database
+    private lateinit var viewModel: WeatherViewModel
+    private lateinit var database: WeatherDatabase
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
 
+        // 1. Khởi tạo Database & API
         database = WeatherDatabase.getDatabase(this)
-        fetchWeatherData("Indore")
+
+        val api = Retrofit.Builder()
+            .addConverterFactory(GsonConverterFactory.create())
+            .baseUrl("https://api.openweathermap.org/data/2.5/")
+            .build()
+            .create(apiInterface::class.java)
+
+        // 2. Khởi tạo Repository và ViewModel
+        val repository = WeatherRepository(api, database)
+        val factory = WeatherViewModelFactory(repository)
+        viewModel = ViewModelProvider(this, factory)[WeatherViewModel::class.java]
+
+        // 3. Lắng nghe dữ liệu từ ViewModel (Observer)
+        setupObservers()
+
+        // 4. Gọi dữ liệu mặc định ban đầu
+        viewModel.fetchWeather("Indore")
+
+        // Setup sự kiện tìm kiếm và lịch sử
         searchCity()
-        // Bắt sự kiện khi click vào nút Lịch sử
         binding.btnHistory.setOnClickListener {
             showHistoryDialog()
         }
+    }
+
+    private fun setupObservers() {
+        // Khi có dữ liệu thời tiết thành công
+        viewModel.weatherResult.observe(this) { responseBody ->
+            val temp = binding.temp
+            val maxT = binding.maxTemp
+            val minT = binding.minTemp
+            val weather = binding.weather
+            val day = binding.day
+            val date = binding.date
+            val city = binding.city
+            val humidity = binding.humidityValue
+            val sunrise = binding.sunriseValue
+            val sunset = binding.sunsetValue
+            val condition = binding.conditionValue
+            val sea = binding.seaValue
+            val wind = binding.windSpeedValue
+
+            // Cập nhật UI
+            val temperature = responseBody.main.temp.toString()
+            val maxTemp = responseBody.main.temp_max.toString()
+            val minTemp = responseBody.main.temp_min.toString()
+            val sunriseValue = responseBody.sys.sunrise
+            val sunsetValue = responseBody.sys.sunset
+            val humidityValue = responseBody.main.humidity.toString()
+            val seaLevel = responseBody.main.pressure.toString()
+            val windSpeed = responseBody.wind.speed.toString()
+            val conditionValue = responseBody.weather.firstOrNull()?.main ?: "unknown"
+
+            temp.text = getString(R.string.tempValue, temperature)
+            maxT.text = getString(R.string.max, maxTemp)
+            minT.text = getString(R.string.min, minTemp)
+            weather.text = getString(R.string.temp, conditionValue)
+            sunrise.text = getString(R.string.title4value, time(sunriseValue.toLong()))
+            sunset.text = getString(R.string.title5value, time(sunsetValue.toLong()))
+            humidity.text = getString(R.string.title1value, "$humidityValue %")
+            condition.text = getString(R.string.title3value, conditionValue)
+            sea.text = getString(R.string.title6value, seaLevel)
+            day.text = dayName()
+            date.text = exactDate()
+            wind.text = getString(R.string.title2value, windSpeed)
+            city.text = responseBody.name
+
+            // Đổi hình nền/animation
+            changeBackgroundOnCondition(conditionValue)
         }
 
-    private fun searchCity(){
+        // Khi có lỗi (Optional)
+        viewModel.errorMessage.observe(this) { errorMsg ->
+            // Bạn có thể Toast lỗi lên nếu muốn
+            // Toast.makeText(this, errorMsg, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun searchCity() {
         val searchView = binding.searchView
-        searchView.setOnQueryTextListener(object :SearchView.OnQueryTextListener{
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 if (query != null) {
-                    fetchWeatherData(query)
+                    // GỌI QUA VIEWMODEL
+                    viewModel.fetchWeather(query)
                 }
                 return true
             }
@@ -57,80 +128,11 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun fetchWeatherData(cityName: String){
-        val retrofit = Retrofit.Builder().addConverterFactory(GsonConverterFactory.create()).baseUrl(
-            "https://api.openweathermap.org/data/2.5/").build().create(apiInterface::class.java)
-        val response = retrofit.getWeatherData(cityName,"67a27574e9ff6d5c4b49ae1ce2b02989","metric")
-        response.enqueue(object :Callback<weatherforecast> {
-            override fun onResponse(
-                call: Call<weatherforecast>,
-                response: Response<weatherforecast>
-            ) {
-                val temp = binding.temp
-                val maxT = binding.maxTemp
-                val minT = binding.minTemp
-                val weather = binding.weather
-                val day = binding.day
-                val date = binding.date
-                val city = binding.city
-                val humidity = binding.humidityValue
-                val sunrise = binding.sunriseValue
-                val sunset = binding.sunsetValue
-                val condition = binding.conditionValue
-                val sea = binding.seaValue
-                val wind = binding.windSpeedValue
-                val responseBody = response.body()
-                if (response.isSuccessful && responseBody != null){
-                    val temperature=responseBody.main.temp.toString()
-                    val maxTemp =responseBody.main.temp_max.toString()
-                    val minTemp =responseBody.main.temp_min.toString()
-                    val sunriseValue =responseBody.sys.sunrise
-                    val sunsetValue =responseBody.sys.sunset
-                    val humidityValue =responseBody.main.humidity.toString()
-                    val seaLevel =responseBody.main.pressure.toString()
-                    val windSpeed =responseBody.wind.speed.toString()
-                    val conditionValue =responseBody.weather.firstOrNull()?.main?:"unknown"
-                    temp.text = getString(R.string.tempValue,temperature)
-                    maxT.text = getString(R.string.max, maxTemp)
-                    minT.text = getString(R.string.min, minTemp)
-                    weather.text = getString(R.string.temp,conditionValue)
-                    sunrise.text = getString(R.string.title4value,time(sunriseValue.toLong()))
-                    sunset.text = getString(R.string.title5value,time(sunsetValue.toLong()))
-                    humidity.text = getString(R.string.title1value,"$humidityValue %")
-                    condition.text = getString(R.string.title3value,conditionValue)
-                    sea.text = getString(R.string.title6value,seaLevel)
-                    day.text = dayName()
-                    date.text = exactDate()
-                    wind.text = getString(R.string.title2value,windSpeed)
-                    city.text = cityName
-                    val historyItem = SavedWeather(
-                        cityName = cityName,
-                        temperature = temperature,
-                        date = exactDate().toString(),
-                        condition = conditionValue
-                    )
-                    saveToDatabase(historyItem) // Gọi hàm lưu
-                    changeBackgroundOnCondition(conditionValue)
-                }
-            }
-            override fun onFailure(call: Call<weatherforecast>, t: Throwable) {
-            }
-        })
-    }
+    // --- Các hàm UI Helper giữ nguyên ---
 
-    private fun saveToDatabase(item: SavedWeather) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            database.weatherDao().insertWeather(item)
-            // Nếu muốn lấy danh sách lịch sử ra log để kiểm tra:
-            // val list = database.weatherDao().getAllWeather()
-            // Log.d("DatabaseCheck", "Size: ${list.size}")
-        }
-    }
-
-    private fun changeBackgroundOnCondition(conditions:String) {
-        when(conditions){
-            "Clear Sky","Sunny","Clear"->{
-//                binding.root.setBackgroundColor(Color.parseColor("#99ccff"))
+    private fun changeBackgroundOnCondition(conditions: String) {
+        when (conditions) {
+            "Clear Sky", "Sunny", "Clear" -> {
                 binding.lottieAnimationView.setAnimation(R.raw.sun)
                 binding.linearLayout.setBackgroundResource(R.drawable.backgroundshape2)
                 binding.linearLayout2.setBackgroundResource(R.drawable.backgroundshape2)
@@ -139,8 +141,7 @@ class MainActivity : AppCompatActivity() {
                 binding.linearLayout5.setBackgroundResource(R.drawable.backgroundshape2)
                 binding.linearLayout6.setBackgroundResource(R.drawable.backgroundshape2)
             }
-            "Partly Clouds","Clouds","Overcast","Mist","Foggy","Haze"->{
-//                binding.root.setBackgroundColor(Color.parseColor("#cccccc"))
+            "Partly Clouds", "Clouds", "Overcast", "Mist", "Foggy", "Haze" -> {
                 binding.lottieAnimationView.setAnimation(R.raw.cloud)
                 binding.linearLayout.setBackgroundResource(R.drawable.backgroundshape3)
                 binding.linearLayout2.setBackgroundResource(R.drawable.backgroundshape3)
@@ -149,8 +150,7 @@ class MainActivity : AppCompatActivity() {
                 binding.linearLayout5.setBackgroundResource(R.drawable.backgroundshape3)
                 binding.linearLayout6.setBackgroundResource(R.drawable.backgroundshape3)
             }
-            "Light Rain","Drizzle","Moderate Rain","Showers","Heavy Rain"->{
-//                binding.root.setBackgroundColor(Color.parseColor("#66b3ff"))
+            "Light Rain", "Drizzle", "Moderate Rain", "Showers", "Heavy Rain" -> {
                 binding.lottieAnimationView.setAnimation(R.raw.rain)
                 binding.linearLayout.setBackgroundResource(R.drawable.backgroundshape4)
                 binding.linearLayout2.setBackgroundResource(R.drawable.backgroundshape4)
@@ -159,8 +159,7 @@ class MainActivity : AppCompatActivity() {
                 binding.linearLayout5.setBackgroundResource(R.drawable.backgroundshape4)
                 binding.linearLayout6.setBackgroundResource(R.drawable.backgroundshape4)
             }
-            "Light Snow","Moderate Snow","Blizzard","Heavy Snow"->{
-//                binding.root.setBackgroundColor(Color.parseColor("#000080"))
+            "Light Snow", "Moderate Snow", "Blizzard", "Heavy Snow" -> {
                 binding.lottieAnimationView.setAnimation(R.raw.snow)
                 binding.linearLayout.setBackgroundResource(R.drawable.backgroundshape5)
                 binding.linearLayout2.setBackgroundResource(R.drawable.backgroundshape5)
@@ -169,40 +168,35 @@ class MainActivity : AppCompatActivity() {
                 binding.linearLayout5.setBackgroundResource(R.drawable.backgroundshape5)
                 binding.linearLayout6.setBackgroundResource(R.drawable.backgroundshape5)
             }
-
         }
         binding.lottieAnimationView.playAnimation()
     }
 
-    private fun exactDate(): CharSequence? {
-        val sdf  = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
-        return sdf.format((Date()))
+    private fun exactDate(): String {
+        val sdf = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
+        return sdf.format(Date())
     }
 
     private fun dayName(): String {
-        val sdf  = SimpleDateFormat("EEEE", Locale.getDefault())
-        return sdf.format((Date()))
+        val sdf = SimpleDateFormat("EEEE", Locale.getDefault())
+        return sdf.format(Date())
     }
 
     private fun time(timestamp: Long): String {
-        val sdf  = SimpleDateFormat("HH:mm", Locale.getDefault())
-        return sdf.format((Date(timestamp*1000)))
+        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        return sdf.format(Date(timestamp * 1000))
     }
-    // Hàm này để hiển thị lịch sử
+
     private fun showHistoryDialog() {
-        // Tạo dialog
         val dialog = BottomSheetDialog(this)
         dialog.setContentView(R.layout.dialog_history)
-
         val rvHistory = dialog.findViewById<RecyclerView>(R.id.rvHistory)
         rvHistory?.layoutManager = LinearLayoutManager(this)
 
-        // Lấy dữ liệu từ Database (chạy trên background thread)
         lifecycleScope.launch(Dispatchers.IO) {
-            // Gọi hàm getAllWeather từ DAO của bạn
+            // Lấy trực tiếp từ DB (hoặc có thể viết thêm hàm trong ViewModel để lấy list này)
             val historyList = database.weatherDao().getAllWeather()
 
-            // Cập nhật UI trên Main Thread
             withContext(Dispatchers.Main) {
                 if (historyList.isNotEmpty()) {
                     val adapter = WeatherHistoryAdapter(historyList)

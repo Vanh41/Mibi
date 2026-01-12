@@ -53,7 +53,7 @@ dependencies {
     implementation("com.airbnb.android:lottie:6.2.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
-
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     val room_version = "2.8.4"
     implementation("androidx.room:room-runtime:$room_version")
     kapt("androidx.room:room-compiler:$room_version")
